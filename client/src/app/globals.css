@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --sm-primary: #0B2545;
+    --sm-secondary: #13315C;
+    --sm-light: #3A86FF;
+    --sm-bg-soft: #F7FAFD;
+  }
+
+  html { scroll-behavior: smooth; }
+  body {
+    @apply bg-white text-ink antialiased;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  ::selection {
+    background: rgba(58, 134, 255, 0.25);
+    color: #0B2545;
+  }
+}
+
+@layer components {
+  .container-page {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg
+           bg-sm-700 text-white font-medium text-sm
+           hover:bg-sm-500 active:bg-sm-800
+           transition-all shadow-sm hover:shadow-glow
+           focus:outline-none focus:ring-2 focus:ring-sm-accent focus:ring-offset-2;
+  }
+
+  .btn-accent {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg
+           bg-sm-accent text-white font-medium text-sm
+           hover:bg-sm-500 active:opacity-90
+           transition-all shadow-sm;
+  }
+
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg
+           border border-sm-700 text-sm-700 bg-white font-medium text-sm
+           hover:bg-sm-50 transition-all;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg
+           text-sm-700 hover:bg-sm-50 font-medium text-sm transition-all;
+  }
+
+  .input-base {
+    @apply w-full px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-sm
+           placeholder:text-gray-400
+           focus:outline-none focus:ring-2 focus:ring-sm-accent focus:border-sm-accent
+           transition-all;
+  }
+
+  .card {
+    @apply bg-white rounded-xl shadow hover:shadow-lg transition-all border border-gray-100;
+  }
+
+  .section-title {
+    @apply font-display text-2xl md:text-3xl font-bold text-sm-700;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium;
+  }
+
+  .badge-blue {
+    @apply badge bg-sm-50 text-sm-700;
+  }
+
+  .badge-green {
+    @apply badge bg-emerald-50 text-emerald-700;
+  }
+}
+
+/* Scrollbar personalizada */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: #F7FAFD; }
+::-webkit-scrollbar-thumb { background: #B0CAE5; border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: #5E7FA8; }
