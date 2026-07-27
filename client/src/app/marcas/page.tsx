@@ -3,12 +3,20 @@ import { api } from '@/lib/api';
 import { Brand } from '@/lib/types';
 
 async function getBrands() {
-  try {
-    const res = await api.get<Brand[]>('/brands');
-    return res.data;
-  } catch {
-    return [];
-  }
+  const base = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  const res = await fetch(
+    `${base}/api/brands`,
+    {
+      cache: "no-store",
+    }
+  );
+
+  const data = await res.json();
+
+  console.log("MARCAS:");
+  console.log(data);
+
+  return data;
 }
 
 export const metadata = { title: 'Marcas' };

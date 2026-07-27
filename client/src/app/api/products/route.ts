@@ -68,7 +68,15 @@ export async function GET(req: NextRequest) {
       ORDER BY p.created_at DESC
       LIMIT $${limitIdx} OFFSET $${offsetIdx}
     `;
+    console.log("========== PRODUCTS ==========");
+    console.log(sql);
+    console.log("PARAMS:", params);
+
     const r = await query(sql, params);
+
+    console.log("ROWS:", r.rows.length);
+    console.log(r.rows);
+
     return NextResponse.json(r.rows.map(mapRow));
   } catch (e) {
     console.error(e);
@@ -136,6 +144,7 @@ export async function POST(req: NextRequest) {
     const galleryLiteral = '{' + gallery.map((s) => '"' + String(s).replace(/"/g, '\\"') + '"').join(',') + '}';
     const specsJson = JSON.stringify(specifications);
 
+
     const r = await query(
       `INSERT INTO products (internal_code, name, slug, short_description, full_description,
          category_id, brand_id, main_image, gallery, specifications, applications,
@@ -143,6 +152,9 @@ export async function POST(req: NextRequest) {
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::text[],$10::jsonb,$11,$12,$13,$14,$15) RETURNING *`,
       [internal_code, name, slug, short_description, full_description, category_id, brand_id, main_image, galleryLiteral, specsJson, applications, minQty, availability, featured, active]
     );
+
+
+
     return NextResponse.json(mapRow(r.rows[0]), { status: 201 });
   } catch (e: any) {
     if (e.code === '23505') return NextResponse.json({ error: 'Codigo interno duplicado.' }, { status: 409 });

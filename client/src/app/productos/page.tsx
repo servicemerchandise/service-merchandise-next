@@ -8,18 +8,44 @@ interface Props {
   searchParams: { q?: string; category?: string; brand?: string };
 }
 
-async function getData({ q, category, brand }: Props['searchParams']) {
+async function getData(searchParams: Props["searchParams"]) {
   const params = new URLSearchParams();
-  if (q) params.set('search', q);
-  if (category) params.set('category', category);
-  if (brand) params.set('brand', brand);
-  params.set('limit', '48');
-  try {
-    const res = await api.get<Product[]>(`/products?${params}`);
-    return res.data;
-  } catch {
-    return [];
+
+  params.set("limit", "48");
+
+  if (searchParams.q) {
+    params.set("search", searchParams.q);
   }
+
+  if (searchParams.category) {
+    params.set("category", searchParams.category);
+  }
+
+  if (searchParams.brand) {
+    params.set("brand", searchParams.brand);
+  }
+
+  const base = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+
+  const url = `${base}/api/products?${params.toString()}`;
+
+  console.log("URL:", url);
+
+  const res = await fetch(url, {
+    cache: "no-store",
+  });
+
+  const text = await res.text();
+
+  console.log("STATUS:", res.status);
+  console.log("URL:", url);
+  console.log("BODY:", text);
+
+  if (!res.ok) {
+    throw new Error(`La API respondió ${res.status}`);
+  }
+
+  return JSON.parse(text);
 }
 
 export const metadata = {

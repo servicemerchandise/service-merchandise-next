@@ -10,19 +10,30 @@ const ICON_MAP: Record<string, string> = {
   Oficina: '🏢',
   Promocionales: '🎁',
   'Seguridad Industrial': '🦺',
+  'Accesorios y belleza': '💄',
+  Joyería: '💍',
   Hogar: '🏠',
   Eventos: '🎉',
-  'Merchandising Corporativo': '👔',
-  Personalizados: '✨',
+  Juguetería: '🧸',
+  Personalizados: '🔥',
 };
 
 async function getCategories() {
-  try {
-    const res = await api.get<Category[]>('/categories?active=true');
-    return res.data;
-  } catch {
-    return [];
-  }
+  const base = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+
+  const res = await fetch(
+    `${base}/api/categories?active=true`,
+    {
+      cache: "no-store",
+    }
+  );
+
+  const data = await res.json();
+
+  console.log("CATEGORIAS:");
+  console.log(data);
+
+  return data;
 }
 
 export const metadata = { title: 'Categorías' };

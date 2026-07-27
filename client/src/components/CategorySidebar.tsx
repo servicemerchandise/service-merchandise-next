@@ -17,10 +17,13 @@ const ICON_MAP: Record<string, string> = {
   Oficina: '🏢',
   Promocionales: '🎁',
   'Seguridad Industrial': '🦺',
+  'Accesorios y belleza': '💄',
+  Joyería: '💍',
   Hogar: '🏠',
   Eventos: '🎉',
-  'Merchandising Corporativo': '👔',
-  Personalizados: '✨',
+  Juguetería: '🧸',
+  Personalizados: '🔥',
+
 };
 
 export function CategorySidebar({ selected }: CategorySidebarProps) {

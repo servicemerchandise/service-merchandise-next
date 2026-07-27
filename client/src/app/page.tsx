@@ -10,26 +10,33 @@ import { ArrowRight, Sparkles, FileText, Tag } from 'lucide-react';
 import { Product, TrustedBrand, Testimonial, BlogPost } from '@/lib/types';
 
 async function getData() {
-  try {
-    const [products, brands, testimonials, blog] = await Promise.all([
-      api.get<Product[]>('/products?featured=true&limit=8'),
-      api.get<TrustedBrand[]>('/trusted-brands'),
-      api.get<Testimonial[]>('/testimonials'),
-      api.get<BlogPost[]>('/blog'),
-    ]);
-    return {
-      products: products.data || [],
-      brands: brands.data || [],
-      testimonials: testimonials.data || [],
-      blog: blog.data || [],
-    };
-  } catch {
-    return { products: [], brands: [], testimonials: [], blog: [] };
-  }
+  const base =
+    process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+
+  const res = await fetch(
+    `${base}/api/products?featured=true&limit=8`,
+    {
+      cache: "no-store",
+    }
+  );
+
+  const text = await res.text();
+
+  console.log("STATUS:", res.status);
+  console.log("BODY:", text);
+
+  // NO PARSEAR TODAVÍA
+  return {
+    products: [],
+    brands: [],
+    testimonials: [],
+    blog: [],
+  };
 }
 
 export default async function HomePage() {
   const { products, brands, testimonials, blog } = await getData();
+
 
   return (
     <>
@@ -53,34 +60,45 @@ export default async function HomePage() {
 
       {/* Products + sidebar */}
       <section className="container-page py-14">
-        <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6">
-          <CategorySidebar />
-          <div>
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <span className="badge-blue"><Sparkles className="w-3 h-3 inline mr-1" /> Destacados</span>
-                <h2 className="section-title mt-2">Productos destacados</h2>
+        <section className="container-page py-14">
+          <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6">
+            <CategorySidebar />
+            <div>
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <span className="badge-blue">
+                    <Sparkles className="w-3 h-3 inline mr-1" />
+                    Destacados
+                  </span>
+
+                  <h2 className="section-title mt-2">
+                    Productos destacados
+                  </h2>
+                </div>
+
+                <Link href="/productos" className="btn-outline">
+                  Ver catálogo completo
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
               </div>
-              <Link href="/productos" className="btn-outline">
-                Ver catálogo completo <ArrowRight className="w-4 h-4" />
-              </Link>
+
+              {products.length > 0 ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {products.map((p) => (
+                    <ProductCard key={p.id} product={p} />
+                  ))}
+                </div>
+              ) : (
+                <div className="card p-10 text-center">
+                  <FileText className="w-10 h-10 mx-auto text-gray-300 mb-3" />
+                  <p className="text-gray-500 text-sm">
+                    Aún no hay productos destacados.
+                  </p>
+                </div>
+              )}
             </div>
-            {products.length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {products.map((p) => (
-                  <ProductCard key={p.id} product={p} />
-                ))}
-              </div>
-            ) : (
-              <div className="card p-10 text-center">
-                <FileText className="w-10 h-10 mx-auto text-gray-300 mb-3" />
-                <p className="text-gray-500 text-sm">
-                  Aún no hay productos destacados. Configúralos desde el panel administrativo.
-                </p>
-              </div>
-            )}
           </div>
-        </div>
+        </section>
       </section>
 
       {/* Benefits */}
