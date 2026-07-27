@@ -18,7 +18,7 @@ const ICON_MAP: Record<string, string> = {
   Personalizados: '🔥',
 };
 
-async function getCategories() {
+async function getCategories(): Promise<Category[]> {
   const base = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
   const res = await fetch(
@@ -39,7 +39,7 @@ async function getCategories() {
 export const metadata = { title: 'Categorías' };
 
 export default async function CategoriasPage() {
-  const categories = await getCategories();
+  const categories: Category[] = await getCategories();
   return (
     <section className="container-page py-10">
       <h1 className="font-display text-3xl font-bold text-sm-700 mb-2">Categorías</h1>
