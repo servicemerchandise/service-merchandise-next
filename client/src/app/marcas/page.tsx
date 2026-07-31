@@ -1,32 +1,20 @@
 import Link from 'next/link';
-import { api } from '@/lib/api';
+import { listBrands } from '@/lib/server/repos/catalog';
 import { Brand } from '@/lib/types';
 
-async function getBrands() {
-  const base = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-  const res = await fetch(
-    `${base}/api/brands`,
-    {
-      cache: "no-store",
-    }
-  );
-
-  const data = await res.json();
-
-  console.log("MARCAS:");
-  console.log(data);
-
-  return data;
-}
-
+export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Marcas' };
 
 export default async function MarcasPage() {
-  const brands = await getBrands();
+  // Acceso directo a DB — sin self-fetch HTTP.
+  const brands: Brand[] = await listBrands(true);
+
   return (
     <section className="container-page py-10">
       <h1 className="font-display text-3xl font-bold text-sm-700 mb-2">Marcas</h1>
-      <p className="text-sm text-gray-600 mb-8">Trabajamos con las marcas líderes del mercado.</p>
+      <p className="text-sm text-gray-600 mb-8">
+        Trabajamos con las marcas líderes del mercado.
+      </p>
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
         {brands.map((b) => (
           <Link
@@ -36,9 +24,15 @@ export default async function MarcasPage() {
             title={b.name}
           >
             {b.logo_url ? (
-              <img src={b.logo_url} alt={b.name} className="max-h-20 max-w-full object-contain grayscale hover:grayscale-0 transition" />
+              <img
+                src={b.logo_url}
+                alt={b.name}
+                className="max-h-20 max-w-full object-contain grayscale hover:grayscale-0 transition"
+              />
             ) : (
-              <span className="font-display font-bold text-sm-700 text-lg text-center">{b.name}</span>
+              <span className="font-display font-bold text-sm-700 text-lg text-center">
+                {b.name}
+              </span>
             )}
           </Link>
         ))}

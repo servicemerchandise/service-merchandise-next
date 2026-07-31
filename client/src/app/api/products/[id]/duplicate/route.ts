@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/server/db';
 import { requireAdmin } from '@/lib/server/auth';
 
+export const dynamic = 'force-dynamic';
+
 const mapRow = (row: any) => ({
   ...row,
   gallery: typeof row.gallery === 'string' ? JSON.parse(row.gallery) : row.gallery || [],

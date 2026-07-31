@@ -2,6 +2,8 @@ import { NextResponse, NextRequest } from 'next/server';
 import { query } from '@/lib/server/db';
 import { requireAuth } from '@/lib/server/auth';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   try {
     const { authorized, response, user } = requireAuth(req);

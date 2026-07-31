@@ -3,15 +3,37 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 
-let pgPool: Pool | null = null;
+// Cache global del pool en entornos serverless (Vercel). Evita abrir un nuevo
+// pool por cada invocación de una Function.
+declare global {
+  // eslint-disable-next-line no-var
+  var __sm_pg_pool__: Pool | undefined;
+  // eslint-disable-next-line no-var
+  var __sm_initialized__: boolean | undefined;
+}
+
+let pgPool: Pool | null = global.__sm_pg_pool__ ?? null;
 let pgMemDb: any = null;
 let usingPgMem = false;
-let initialized = false;
+let initialized = global.__sm_initialized__ ?? false;
 
-const EMBEDDED_SCHEMA_PATH = path.join(process.cwd(), 'src', 'lib', 'server', 'db', 'embedded-schema.sql');
-const REAL_SCHEMA_PATH = path.join(process.cwd(), 'src', 'lib', 'server', 'db', 'schema.sql');
+const EMBEDDED_SCHEMA_PATH = path.join(
+  process.cwd(),
+  'src',
+  'lib',
+  'server',
+  'db',
+  'embedded-schema.sql'
+);
+const REAL_SCHEMA_PATH = path.join(
+  process.cwd(),
+  'src',
+  'lib',
+  'server',
+  'db',
+  'schema.sql'
+);
 
-// uuid_generate_v4 más robusto con crypto
 function uuidv4(): string {
   const bytes = crypto.randomBytes(16);
   bytes[6] = (bytes[6] & 0x0f) | 0x40;
@@ -20,11 +42,12 @@ function uuidv4(): string {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 async function initPgMem() {
   const { newDb } = require('pg-mem');
   const db = newDb({ autoCreateForeignKeyIndices: true });
 
-  // Registrar generador de UUID más robusto
   db.public.registerFunction({
     name: 'uuid_generate_v4',
     returns: 'uuid',
@@ -32,15 +55,12 @@ async function initPgMem() {
     impure: true,
   });
 
-  // Cargar schema simplificado
   const schemaSql = fs.readFileSync(EMBEDDED_SCHEMA_PATH, 'utf-8');
   db.public.none(schemaSql);
 
-  // Crear adapter pg
   const { Pool: PgMemPool } = db.adapters.createPg();
   const pool = new PgMemPool();
 
-  // Insertar seed inicial
   const seedIds = [
     { name: 'Tecnología', slug: 'tecnologia', display_order: 1 },
     { name: 'Herramientas', slug: 'herramientas', display_order: 2 },
@@ -59,10 +79,11 @@ async function initPgMem() {
         'INSERT INTO categories (id, name, slug, display_order) VALUES ($1, $2, $3, $4)',
         [uuidv4(), s.name, s.slug, s.display_order]
       );
-    } catch { }
+    } catch {
+      /* ignore */
+    }
   }
 
-  // Seeds de marcas de confianza
   const trustedNames = ['Bavaria', 'Nutresa', 'Éxito', 'Sura', 'Argos', 'Terpel', 'Davivienda'];
   for (let i = 0; i < trustedNames.length; i++) {
     try {
@@ -70,14 +91,33 @@ async function initPgMem() {
         'INSERT INTO trusted_brands (id, name, logo_url, display_order) VALUES ($1, $2, $3, $4)',
         [uuidv4(), trustedNames[i], '', i + 1]
       );
-    } catch { }
+    } catch {
+      /* ignore */
+    }
   }
 
-  // Seeds de testimonios
   const testimonials = [
-    { client_name: 'Carlos Ramírez', company: 'Grupo Industrial XYZ', position: 'Director de Compras', message: 'Excelente atención y rapidez en nuestras cotizaciones.', rating: 5 },
-    { client_name: 'María Fernández', company: 'Constructora Andina', position: 'Gerente Administrativa', message: 'La calidad y la personalización superaron nuestras expectativas.', rating: 5 },
-    { client_name: 'Juan Pablo Ortiz', company: 'TechSolutions S.A.', position: 'CEO', message: 'Proceso ágil, profesional y con muy buenas opciones.', rating: 5 },
+    {
+      client_name: 'Carlos Ramírez',
+      company: 'Grupo Industrial XYZ',
+      position: 'Director de Compras',
+      message: 'Excelente atención y rapidez en nuestras cotizaciones.',
+      rating: 5,
+    },
+    {
+      client_name: 'María Fernández',
+      company: 'Constructora Andina',
+      position: 'Gerente Administrativa',
+      message: 'La calidad y la personalización superaron nuestras expectativas.',
+      rating: 5,
+    },
+    {
+      client_name: 'Juan Pablo Ortiz',
+      company: 'TechSolutions S.A.',
+      position: 'CEO',
+      message: 'Proceso ágil, profesional y con muy buenas opciones.',
+      rating: 5,
+    },
   ];
   for (const t of testimonials) {
     try {
@@ -85,69 +125,111 @@ async function initPgMem() {
         'INSERT INTO testimonials (id, client_name, company, position, message, rating) VALUES ($1, $2, $3, $4, $5, $6)',
         [uuidv4(), t.client_name, t.company, t.position, t.message, t.rating]
       );
-    } catch { }
+    } catch {
+      /* ignore */
+    }
   }
 
-  // Seed company_settings
   try {
-    await pool.query("INSERT INTO company_settings (id, company_name) VALUES (1, 'Service Merchandise')");
-  } catch { }
+    await pool.query(
+      "INSERT INTO company_settings (id, company_name) VALUES (1, 'Service Merchandise')"
+    );
+  } catch {
+    /* ignore */
+  }
 
   return { pool, db };
 }
 
 async function initRealPg() {
   const databaseUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL || '';
+  // Reusar pool si ya existe (serverless warm starts)
+  const existingPool: Pool | undefined = global.__sm_pg_pool__;
+  if (existingPool) return existingPool;
+
   const pool = new Pool({
     connectionString: databaseUrl,
-    max: 20,
+    max: 10,
     idleTimeoutMillis: 30000,
+    ssl:
+      databaseUrl.includes('sslmode=require') || databaseUrl.includes('neon.tech')
+        ? { rejectUnauthorized: false }
+        : undefined,
   });
   pool.on('error', (err: any) => console.error('PG error:', err.message));
-  try {
-    await pool.query('SELECT 1');
-    const { rows } = await pool.query(
-      "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public'"
-    );
-    if (Number(rows[0].count) === 0) {
-      await pool.query(fs.readFileSync(REAL_SCHEMA_PATH, 'utf-8'));
-      console.log('✓ Esquema PostgreSQL ejecutado');
-    }
-  } catch (e) {
-    throw e;
+
+  await pool.query('SELECT 1');
+
+  // Solo crear esquema si las tablas no existen (evita trabajo innecesario en cada cold start).
+  const { rows } = await pool.query(
+    "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public'"
+  );
+  if (Number(rows[0].count) === 0) {
+    await pool.query(fs.readFileSync(REAL_SCHEMA_PATH, 'utf-8'));
+    console.log('✓ Esquema PostgreSQL ejecutado');
   }
+
+  // Cachear el pool en globalThis para reusarlo entre invocaciones serverless.
+  global.__sm_pg_pool__ = pool;
   return pool;
+}
+
+/**
+ * Determina si tenemos una URL real de Postgres.
+ */
+async function tryRealPg(): Promise<boolean> {
+  const databaseUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL || '';
+  if (!databaseUrl) return false;
+  if (
+    databaseUrl.includes('***') ||
+    databaseUrl.includes('tu_') ||
+    databaseUrl.includes('change_me') ||
+    databaseUrl.includes('placeholder')
+  ) {
+    return false;
+  }
+  try {
+    const pool = new Pool({
+      connectionString: databaseUrl,
+      connectionTimeoutMillis: 2000,
+      ssl: databaseUrl.includes('neon.tech') ? { rejectUnauthorized: false } : undefined,
+    });
+    await pool.query('SELECT 1');
+    await pool.end();
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function initDb(): Promise<void> {
   if (initialized) return;
-  const useReal = await checkRealPg();
-  if (useReal) {
-    console.log('🐘 Conectando a PostgreSQL real...');
+
+  // PRODUCCIÓN: SIEMPRE PostgreSQL real. Si no hay DATABASE_URL válido, fallar ruidosamente.
+  if (isProduction) {
+    console.log('🐘 [production] Conectando a PostgreSQL...');
+    pgPool = await initRealPg();
+    usingPgMem = false;
+    initialized = true;
+    global.__sm_initialized__ = true;
+    return;
+  }
+
+  // DESARROLLO: intentar Postgres real; si no, caer a pg-mem (sandbox sin internet).
+  const hasReal = await tryRealPg();
+  if (hasReal) {
+    console.log('🐘 [dev] Conectando a PostgreSQL real...');
     pgPool = await initRealPg();
     usingPgMem = false;
   } else {
-    console.log('💾 Usando base de datos embebida (pg-mem) — datos en memoria del proceso');
+    console.log('💾 [dev] Sin DATABASE_URL — usando pg-mem (datos en memoria)');
     const res = await initPgMem();
     pgPool = res.pool;
     pgMemDb = res.db;
     usingPgMem = true;
   }
   initialized = true;
-}
-
-async function checkRealPg(): Promise<boolean> {
-  const databaseUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL || '';
-  if (!databaseUrl) return false;
-  if (databaseUrl.includes('***') || databaseUrl.includes('tu_') || databaseUrl.includes('change_me')) return false;
-  try {
-    const test = new Pool({ connectionString: databaseUrl, connectionTimeoutMillis: 2000 });
-    await test.query('SELECT 1');
-    await test.end();
-    return true;
-  } catch {
-    return false;
-  }
+  global.__sm_initialized__ = true;
 }
 
 export const pool: Pool = new Proxy({} as Pool, {
@@ -163,7 +245,11 @@ export async function query(text: string, params?: any[]) {
   const res = await (pgPool as any).query(text, params);
   const duration = Date.now() - start;
   if (process.env.NODE_ENV === 'development') {
-    console.log(`executed query (${usingPgMem ? 'pg-mem' : 'pg'})`, { text: text.substring(0, 60), duration, rows: res.rowCount });
+    console.log(`executed query (${usingPgMem ? 'pg-mem' : 'pg'})`, {
+      text: text.substring(0, 60),
+      duration,
+      rows: res.rowCount,
+    });
   }
   return res;
 }

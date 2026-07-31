@@ -1,7 +1,9 @@
+import * as XLSX from 'xlsx';
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/server/db';
 import { requireAuth } from '@/lib/server/auth';
-import * as XLSX from 'xlsx';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {

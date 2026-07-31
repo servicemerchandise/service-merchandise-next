@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import slugify from 'slugify';
 import { query } from '@/lib/server/db';
 import { requireAdmin } from '@/lib/server/auth';
+import slugify from 'slugify';
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {

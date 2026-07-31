@@ -3,6 +3,8 @@ import { query } from '@/lib/server/db';
 import { requireAuth } from '@/lib/server/auth';
 import { sendQuotationAdminEmail, sendQuotationClientEmail } from '@/lib/server/mailer';
 
+export const dynamic = 'force-dynamic';
+
 function normalizeQuotation(q: any) {
   if (!q) return q;
   if (typeof q.items === 'string') {

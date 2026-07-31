@@ -1,8 +1,10 @@
+import { JWT_SECRET } from '@/lib/server/auth';
 import { NextResponse } from 'next/server';
+import { query } from '@/lib/server/db';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { query } from '@/lib/server/db';
-import { JWT_SECRET } from '@/lib/server/auth';
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {

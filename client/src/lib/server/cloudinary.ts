@@ -50,6 +50,14 @@ export const uploadImage = async (
   fileBuffer: Buffer,
   folder: string = 'service-merchandise'
 ): Promise<string> => {
+  const isProd = process.env.NODE_ENV === 'production';
+
+  if (isProd && !isCloudinaryConfigured()) {
+    throw new Error(
+      'CLOUDINARY_* environment variables are required in production. Local fallback is disabled.'
+    );
+  }
+
   if (isCloudinaryConfigured()) {
     return new Promise((resolve, reject) => {
       cloudinary.uploader
@@ -61,7 +69,7 @@ export const uploadImage = async (
     });
   }
 
-  // Fallback: disco local (directorio temporal en Vercel)
+  // Fallback SOLO en desarrollo: disco local (os.tmpdir()).
   const safeFolder = folder.replace(/[^a-zA-Z0-9_\-/]/g, '_').replace(/\.\./g, '');
   const ext = detectExtension(fileBuffer);
   const filename = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}.${ext}`;
@@ -70,7 +78,6 @@ export const uploadImage = async (
   const targetPath = path.join(targetDir, filename);
   fs.writeFileSync(targetPath, fileBuffer);
 
-  // Devolvemos URL relativa a /uploads/ para que el frontend lo cargue desde el mismo dominio
   return `/uploads/${safeFolder}/${filename}`;
 };
 

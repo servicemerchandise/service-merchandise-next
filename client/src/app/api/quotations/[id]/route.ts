@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/server/db';
 import { requireAuth, requireAdmin } from '@/lib/server/auth';
 
+export const dynamic = 'force-dynamic';
+
 function normalizeQuotation(q: any) {
   if (!q) return q;
   if (typeof q.items === 'string') {

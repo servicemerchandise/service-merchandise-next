@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
-import bcrypt from 'bcryptjs';
 import { query } from '@/lib/server/db';
+import bcrypt from 'bcryptjs';
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {

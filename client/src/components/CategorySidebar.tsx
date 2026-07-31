@@ -50,7 +50,7 @@ export function CategorySidebar({ selected }: CategorySidebarProps) {
           </span>
           <ChevronRight className="w-3.5 h-3.5" />
         </Link>
-        {categories.map((c) => (
+        {categories.map((c: Category) => (
           <Link
             key={c.id}
             href={`/productos?category=${c.id}`}

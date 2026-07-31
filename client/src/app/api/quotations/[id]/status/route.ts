@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/server/db';
 import { requireAdmin } from '@/lib/server/auth';
 
+export const dynamic = 'force-dynamic';
+
 const STATUS_VALUES = ['nueva', 'en_proceso', 'enviada', 'cerrada'];
 
 function normalizeQuotation(q: any) {

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { api } from '@/lib/api';
+import { listCategories } from '@/lib/server/repos/catalog';
 import { Category } from '@/lib/types';
 import { ChevronRight } from 'lucide-react';
 
@@ -18,32 +18,19 @@ const ICON_MAP: Record<string, string> = {
   Personalizados: '🔥',
 };
 
-async function getCategories(): Promise<Category[]> {
-  const base = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-
-  const res = await fetch(
-    `${base}/api/categories?active=true`,
-    {
-      cache: "no-store",
-    }
-  );
-
-  const data = await res.json();
-
-  console.log("CATEGORIAS:");
-  console.log(data);
-
-  return data;
-}
-
+export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Categorías' };
 
 export default async function CategoriasPage() {
-  const categories: Category[] = await getCategories();
+  // Acceso directo a DB — sin self-fetch HTTP.
+  const categories: Category[] = await listCategories(true);
+
   return (
     <section className="container-page py-10">
       <h1 className="font-display text-3xl font-bold text-sm-700 mb-2">Categorías</h1>
-      <p className="text-sm text-gray-600 mb-8">Explora todas nuestras líneas de productos corporativos.</p>
+      <p className="text-sm text-gray-600 mb-8">
+        Explora todas nuestras líneas de productos corporativos.
+      </p>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {categories.map((c) => (
           <Link
@@ -58,7 +45,9 @@ export default async function CategoriasPage() {
               <h3 className="font-display font-semibold text-sm-700 group-hover:text-sm-accent transition truncate">
                 {c.name}
               </h3>
-              {c.description && <p className="text-xs text-gray-500 line-clamp-1">{c.description}</p>}
+              {c.description && (
+                <p className="text-xs text-gray-500 line-clamp-1">{c.description}</p>
+              )}
             </div>
             <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-sm-accent" />
           </Link>
