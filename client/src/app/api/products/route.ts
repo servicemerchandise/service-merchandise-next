@@ -36,30 +36,35 @@ export async function GET(req: NextRequest) {
     const category = searchParams.get('category');
     const brand = searchParams.get('brand');
     const featured = searchParams.get('featured');
-    const limit = searchParams.get('limit') || '24';
-    const offset = searchParams.get('offset') || '0';
+    const sort = searchParams.get('sort') || 'recent';
+    const limitNum = Math.max(1, parseInt(searchParams.get('limit') || '24', 10));
+    const offsetNum = Math.max(0, parseInt(searchParams.get('offset') || '0', 10));
+    const withCount = searchParams.get('withCount') === 'true';
 
-    const params: any[] = [];
+    const countParams: any[] = [];
     const conds: string[] = ['p.active = TRUE'];
 
     if (search) {
-      params.push(`%${String(search).toLowerCase()}%`);
-      conds.push(`(LOWER(p.name) LIKE $${params.length} OR LOWER(p.short_description) LIKE $${params.length} OR LOWER(p.internal_code) LIKE $${params.length})`);
+      countParams.push(`%${String(search).toLowerCase()}%`);
+      conds.push(`(LOWER(p.name) LIKE $${countParams.length} OR LOWER(p.short_description) LIKE $${countParams.length} OR LOWER(p.internal_code) LIKE $${countParams.length})`);
     }
     if (category) {
-      params.push(category);
-      conds.push(`p.category_id = $${params.length}`);
+      countParams.push(category);
+      conds.push(`p.category_id = $${countParams.length}`);
     }
     if (brand) {
-      params.push(brand);
-      conds.push(`p.brand_id = $${params.length}`);
+      countParams.push(brand);
+      conds.push(`p.brand_id = $${countParams.length}`);
     }
     if (featured === 'true') conds.push('p.featured = TRUE');
 
-    params.push(Number(limit));
+    const params = [...countParams];
+    params.push(limitNum);
     const limitIdx = params.length;
-    params.push(Number(offset));
+    params.push(offsetNum);
     const offsetIdx = params.length;
+
+    const orderDirection = sort === 'oldest' ? 'ASC' : 'DESC';
 
     const sql = `
       SELECT p.*, c.name AS category_name, b.name AS brand_name, b.logo_url AS brand_logo
@@ -67,19 +72,34 @@ export async function GET(req: NextRequest) {
       LEFT JOIN categories c ON p.category_id = c.id
       LEFT JOIN brands b ON p.brand_id = b.id
       WHERE ${conds.join(' AND ')}
-      ORDER BY p.created_at DESC
+      ORDER BY p.created_at ${orderDirection}
       LIMIT $${limitIdx} OFFSET $${offsetIdx}
     `;
-    console.log("========== PRODUCTS ==========");
-    console.log(sql);
-    console.log("PARAMS:", params);
 
     const r = await query(sql, params);
+    const products = r.rows.map(mapRow);
 
-    console.log("ROWS:", r.rows.length);
-    console.log(r.rows);
+    if (withCount) {
+      const countSql = `
+        SELECT COUNT(*) AS total
+        FROM products p
+        WHERE ${conds.join(' AND ')}
+      `;
+      const countR = await query(countSql, countParams);
+      const total = Number(countR.rows[0]?.total || 0);
+      const page = Math.floor(offsetNum / limitNum) + 1;
+      const totalPages = Math.ceil(total / limitNum);
 
-    return NextResponse.json(r.rows.map(mapRow));
+      return NextResponse.json({
+        products,
+        total,
+        page,
+        limit: limitNum,
+        totalPages: totalPages > 0 ? totalPages : 1,
+      });
+    }
+
+    return NextResponse.json(products);
   } catch (e) {
     console.error(e);
     return NextResponse.json({ error: 'Error al listar productos' }, { status: 500 });

@@ -14,10 +14,11 @@ export interface ListProductsParams {
   featured?: boolean;
   limit?: number;
   offset?: number;
+  sort?: 'recent' | 'oldest';
 }
 
-export async function listProducts(params: ListProductsParams = {}): Promise<Product[]> {
-  const { search, category, brand, featured, limit = 24, offset = 0 } = params;
+function buildWhereClause(params: Omit<ListProductsParams, 'limit' | 'offset' | 'sort'>): { conditions: string[]; values: any[] } {
+  const { search, category, brand, featured } = params;
   const conditions: string[] = ['p.active = TRUE'];
   const values: any[] = [];
 
@@ -37,10 +38,19 @@ export async function listProducts(params: ListProductsParams = {}): Promise<Pro
     conditions.push('p.featured = TRUE');
   }
 
+  return { conditions, values };
+}
+
+export async function listProducts(params: ListProductsParams = {}): Promise<Product[]> {
+  const { sort = 'recent', limit = 24, offset = 0 } = params;
+  const { conditions, values } = buildWhereClause(params);
+
   values.push(Number(limit));
   const limitIdx = values.length;
   values.push(Number(offset));
   const offsetIdx = values.length;
+
+  const orderDirection = sort === 'oldest' ? 'ASC' : 'DESC';
 
   const sql = `
     SELECT p.*, c.name AS category_name, b.name AS brand_name, b.logo_url AS brand_logo
@@ -48,12 +58,31 @@ export async function listProducts(params: ListProductsParams = {}): Promise<Pro
     LEFT JOIN categories c ON p.category_id = c.id
     LEFT JOIN brands b ON p.brand_id = b.id
     WHERE ${conditions.join(' AND ')}
-    ORDER BY p.created_at DESC
+    ORDER BY p.created_at ${orderDirection}
     LIMIT $${limitIdx} OFFSET $${offsetIdx}
   `;
 
   const r = await query(sql, values);
   return r.rows.map(mapRow);
+}
+
+export async function countProducts(params: Omit<ListProductsParams, 'limit' | 'offset' | 'sort'> = {}): Promise<number> {
+  const { conditions, values } = buildWhereClause(params);
+  const sql = `
+    SELECT COUNT(*) AS total
+    FROM products p
+    WHERE ${conditions.join(' AND ')}
+  `;
+  const r = await query(sql, values);
+  return Number(r.rows[0]?.total || 0);
+}
+
+export async function listProductsWithCount(params: ListProductsParams = {}): Promise<{ products: Product[]; total: number }> {
+  const [products, total] = await Promise.all([
+    listProducts(params),
+    countProducts(params),
+  ]);
+  return { products, total };
 }
 
 export async function getProductBySlug(slug: string): Promise<Product | null> {
@@ -68,3 +97,4 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
   if (r.rows.length === 0) return null;
   return mapRow(r.rows[0]);
 }
+

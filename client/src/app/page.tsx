@@ -1,22 +1,21 @@
 import Link from 'next/link';
-import { listProducts } from '@/lib/server/repos/products';
+import { listProductsWithCount } from '@/lib/server/repos/products';
 import { listTestimonials, listTrustedBrands } from '@/lib/server/repos/front';
 import { listBlogPosts } from '@/lib/server/repos/blog';
 import { Hero } from '@/components/Hero';
-import { ProductCard } from '@/components/ProductCard';
+import { FeaturedProductsSection } from '@/components/FeaturedProductsSection';
 import { CategorySidebar } from '@/components/CategorySidebar';
 import { TrustedBrandsCarousel } from '@/components/TrustedBrandsCarousel';
 import { TestimonialsCarousel } from '@/components/TestimonialsCarousel';
 import { Benefits } from '@/components/Benefits';
-import { ArrowRight, Sparkles, FileText, Tag } from 'lucide-react';
-import { Product } from '@/lib/types';
+import { ArrowRight, Tag } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
 export default async function HomePage() {
   // Acceso directo a DB (sin self-fetch HTTP).
-  const [products, brands, testimonials, blog] = await Promise.all([
-    listProducts({ featured: true, limit: 8 }).catch(() => [] as Product[]),
+  const [{ products, total: featuredTotal }, brands, testimonials, blog] = await Promise.all([
+    listProductsWithCount({ featured: true, limit: 8 }).catch(() => ({ products: [], total: 0 })),
     listTrustedBrands().catch(() => []),
     listTestimonials().catch(() => []),
     listBlogPosts(3).catch(() => []),
@@ -48,34 +47,10 @@ export default async function HomePage() {
       <section className="container-page py-14">
         <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6">
           <CategorySidebar />
-          <div>
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <span className="badge-blue">
-                  <Sparkles className="w-3 h-3 inline mr-1" />
-                  Destacados
-                </span>
-                <h2 className="section-title mt-2">Productos destacados</h2>
-              </div>
-              <Link href="/productos" className="btn-outline">
-                Ver catálogo completo
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-            </div>
-
-            {products.length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {products.map((p) => (
-                  <ProductCard key={p.id} product={p} />
-                ))}
-              </div>
-            ) : (
-              <div className="card p-10 text-center">
-                <FileText className="w-10 h-10 mx-auto text-gray-300 mb-3" />
-                <p className="text-gray-500 text-sm">Aún no hay productos destacados.</p>
-              </div>
-            )}
-          </div>
+          <FeaturedProductsSection
+            initialProducts={products}
+            initialTotal={featuredTotal}
+          />
         </div>
       </section>
 
